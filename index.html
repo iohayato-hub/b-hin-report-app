@@ -133,6 +133,41 @@
       </div>
     </div>
 
+    <!-- 6. ⚙️ 設定（GAS URL入力 ＆ 商品マスタ読込）アコーディオン -->
+    <div class="bg-white rounded-3xl shadow-sm border border-slate-200/90 overflow-hidden">
+      <button type="button" onclick="toggleGasAccordion()" class="w-full p-4 flex items-center justify-between text-left hover:bg-slate-50 active:bg-slate-100 transition select-none">
+        <div class="flex items-center space-x-2.5 min-w-0">
+          <span class="text-lg">⚙️</span>
+          <div class="min-w-0">
+            <h3 class="text-xs font-black text-slate-800 tracking-tight">設定（GAS URL入力 ＆ 商品マスタ読込）</h3>
+            <p id="gasAccordionSubtitle" class="text-[10px] text-slate-400 font-medium truncate mt-0.5">GAS URLと商品マスタ同期</p>
+          </div>
+        </div>
+        <div class="flex items-center space-x-2 shrink-0 ml-2">
+          <span id="gasStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200">要設定</span>
+          <svg id="gasAccordionArrow" class="w-4 h-4 text-slate-400 transition transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+        </div>
+      </button>
+
+      <div id="gasAccordionBody" class="hidden p-4 pt-1 border-t border-slate-100 space-y-3">
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-bold text-slate-700">GAS WebアプリURL</label>
+            <span id="gasAutoSaveIndicator" class="text-[10px] font-bold text-emerald-600 hidden">✓ 自動保存済</span>
+          </div>
+          <input type="url" id="gasUrlInput" oninput="onGasUrlChange(this.value)" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
+          <p class="text-[10px] text-slate-400 mt-1">※URLを入力すると端末(localStorage)に自動保存されます。</p>
+        </div>
+
+        <button type="button" id="btnSyncMaster" onclick="syncMasterFromGas()" class="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs">
+          <span>🔄 商品マスタを同期</span>
+          <span id="masterSyncCount" class="text-[10px] opacity-80">(0件)</span>
+        </button>
+
+        <div id="gasSyncResultNotice" class="hidden p-2 rounded-xl text-xs font-medium"></div>
+      </div>
+    </div>
+
   </main>
 
   <!-- 4. 画面下部固定の特大送信ボタン (Sticky Bottom / 高さ54px / 高コントラスト) -->
@@ -226,6 +261,41 @@
     </div>
   </div>
 
+  <!-- 0. 未設定時の自動ダイアログ: 最初にGASのURLを設定してください -->
+  <div id="initialGasPromptModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 text-left space-y-4">
+      <div class="flex items-start space-x-3">
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0 text-amber-700 font-bold text-lg">
+          ⚠️
+        </div>
+        <div>
+          <span class="text-[10px] font-bold text-amber-700 uppercase">INITIAL SETUP REQUIRED</span>
+          <h2 class="text-base font-black text-slate-900 leading-snug">最初にGASのURLを設定してください</h2>
+        </div>
+      </div>
+
+      <p class="text-xs text-slate-600 leading-relaxed">
+        スプレッドシートへの記録、排他制御による通し番号の自動発番、商品マスタの読込を行うため、Google Apps Script (GAS) のWebアプリURLを入力してください。
+      </p>
+
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">GAS WebアプリURL</label>
+          <input type="url" id="promptGasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
+          <p class="text-[10px] text-slate-400 mt-1">※入力内容は自動保存されます。</p>
+        </div>
+
+        <button type="button" onclick="saveGasUrlFromPrompt()" class="w-full h-12 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-1.5">
+          <span>URLを保存して開始</span>
+        </button>
+
+        <button type="button" onclick="dismissGasPrompt()" class="w-full py-2 text-slate-400 hover:text-slate-600 font-bold text-[11px] text-center">
+          後で設定する（画面下の設定欄から入力可能）
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Audio & Vibration Feedback -->
   <script>
     function triggerHaptic(pattern = 60) {
@@ -297,9 +367,155 @@
     window.addEventListener('DOMContentLoaded', () => {
       initConfig();
       renderReasonsGrid();
+      initGasSettings();
       loadProductMaster();
       updateSubmitBtn();
+      checkInitialGasPrompt();
     });
+
+    // 0. GAS 設定の初期化 & 自動ダイアログ
+    function initGasSettings() {
+      const url = localStorage.getItem('bhin_gas_endpoint') || '';
+      const input = document.getElementById('gasUrlInput');
+      if (input) input.value = url;
+      updateGasStatusUI(url);
+    }
+
+    function checkInitialGasPrompt() {
+      const url = localStorage.getItem('bhin_gas_endpoint') || '';
+      const isEmbedded = (typeof google !== 'undefined' && google.script && google.script.run);
+      if (!url && !isEmbedded) {
+        document.getElementById('initialGasPromptModal').classList.remove('hidden');
+      }
+    }
+
+    function saveGasUrlFromPrompt() {
+      const input = document.getElementById('promptGasUrlInput');
+      const val = (input ? input.value : '').trim();
+      if (!val) {
+        alert('GAS WebアプリURLを入力してください。');
+        return;
+      }
+      localStorage.setItem('bhin_gas_endpoint', val);
+      const urlInput = document.getElementById('gasUrlInput');
+      if (urlInput) urlInput.value = val;
+      updateGasStatusUI(val);
+      document.getElementById('initialGasPromptModal').classList.add('hidden');
+      syncMasterFromGas();
+    }
+
+    function dismissGasPrompt() {
+      document.getElementById('initialGasPromptModal').classList.add('hidden');
+      openGasAccordion();
+    }
+
+    function toggleGasAccordion() {
+      const body = document.getElementById('gasAccordionBody');
+      const arrow = document.getElementById('gasAccordionArrow');
+      if (body.classList.contains('hidden')) {
+        openGasAccordion();
+      } else {
+        body.classList.add('hidden');
+        if (arrow) arrow.classList.remove('rotate-180');
+      }
+    }
+
+    function openGasAccordion() {
+      const body = document.getElementById('gasAccordionBody');
+      const arrow = document.getElementById('gasAccordionArrow');
+      if (body) body.classList.remove('hidden');
+      if (arrow) arrow.classList.add('rotate-180');
+    }
+
+    function onGasUrlChange(val) {
+      const clean = val.trim();
+      localStorage.setItem('bhin_gas_endpoint', clean);
+      updateGasStatusUI(clean);
+      const indicator = document.getElementById('gasAutoSaveIndicator');
+      if (indicator) {
+        indicator.classList.remove('hidden');
+        setTimeout(() => indicator.classList.add('hidden'), 2000);
+      }
+    }
+
+    function updateGasStatusUI(url) {
+      const badge = document.getElementById('gasStatusBadge');
+      const sub = document.getElementById('gasAccordionSubtitle');
+      const countSpan = document.getElementById('masterSyncCount');
+      if (countSpan) countSpan.textContent = '(' + productMaster.length + '件)';
+      if (badge && sub) {
+        if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+          badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200';
+          badge.textContent = '設定済';
+          sub.textContent = '連携中 (' + productMaster.length + '件マスタ)';
+        } else {
+          badge.className = 'text-[10px] font-bold px-2 py-0.5 rounded-full border bg-amber-50 text-amber-700 border-amber-200';
+          badge.textContent = '要設定';
+          sub.textContent = 'URL未設定（タップして入力）';
+        }
+      }
+    }
+
+    function syncMasterFromGas() {
+      const url = localStorage.getItem('bhin_gas_endpoint') || '';
+      const btn = document.getElementById('btnSyncMaster');
+      
+      if (!url && !(typeof google !== 'undefined' && google.script && google.script.run)) {
+        alert('GAS WebアプリURLを設定してください。');
+        openGasAccordion();
+        return;
+      }
+
+      if (btn) btn.innerHTML = '<span>🔄 同期中...</span>';
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(master) {
+            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span> <span id="masterSyncCount" class="text-[10px] opacity-80">(' + (master ? master.length : 0) + '件)</span>';
+            if (Array.isArray(master) && master.length > 0) {
+              productMaster = master;
+              localStorage.setItem('bhin_product_master', JSON.stringify(master));
+              showSyncNotice(true, '商品マスタ同期完了: ' + master.length + '件取得しました。');
+              updateGasStatusUI(url);
+            }
+          })
+          .withFailureHandler(function(err) {
+            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span>';
+            showSyncNotice(false, '同期失敗: ' + err);
+          })
+          .getProductMasterData();
+      } else {
+        const endpoint = url + (url.includes('?') ? '&' : '?') + 'action=getMaster&t=' + Date.now();
+        fetch(endpoint)
+          .then(res => res.json())
+          .then(data => {
+            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span> <span id="masterSyncCount" class="text-[10px] opacity-80">(' + (data.master ? data.master.length : 0) + '件)</span>';
+            if (data.success && Array.isArray(data.master)) {
+              productMaster = data.master;
+              localStorage.setItem('bhin_product_master', JSON.stringify(data.master));
+              showSyncNotice(true, '商品マスタ同期完了: ' + data.master.length + '件取得しました。');
+              updateGasStatusUI(url);
+            } else {
+              showSyncNotice(false, '同期エラー: ' + (data.error || '不明'));
+            }
+          })
+          .catch(err => {
+            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span>';
+            showSyncNotice(false, '通信エラー: ' + err.message);
+          });
+      }
+    }
+
+    function showSyncNotice(success, msg) {
+      const notice = document.getElementById('gasSyncResultNotice');
+      if (!notice) return;
+      notice.className = success 
+        ? 'p-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200' 
+        : 'p-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+      notice.textContent = msg;
+      notice.classList.remove('hidden');
+      setTimeout(() => notice.classList.add('hidden'), 5000);
+    }
 
     // 1. 設定の初期化 & 表示
     function initConfig() {
