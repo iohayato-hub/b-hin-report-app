@@ -6,12 +6,22 @@
  * 【主な機能】
  * 1. LockService による厳格な排他制御（同時書き込み時の通し番号重複防止）
  * 2. シート自動生成（「B品報告実績」「商品マスタ」）
- * 3. 商品マスタ全件取得 Web API (doGet: ?action=getMaster)
- * 4. B品・直し品移動データ登録 & 自動採番 (doPost / google.script.run)
- * 5. 通し番号（No.〇〇）の返却
+ * 3. 柔軟なスプレッドシート指定（URL指定 / ID指定 / バインド型自動検出）
+ * 4. 商品マスタ全件取得 Web API (doGet: ?action=getMaster)
+ * 5. B品・直し品移動データ登録 & 自動採番 (doPost / google.script.run)
+ * 6. 通し番号（No.〇〇）の返却
  */
 
-// 定数定義
+// ==============================================================================
+// 【設定】スプレッドシートの指定（URL または ID）
+// ==============================================================================
+// ※スプレッドシート画面の「拡張機能 > Apps Script」から開いている場合は空欄（''）のままでOKです。
+// ※スタンドアロンスクリプトの場合や、特定のスプレッドシートに書き込みたい場合は
+//   ここにスプレッドシートのURL（またはID）を貼り付けてください。
+//   例: const SPREADSHEET_URL_OR_ID = 'https://docs.google.com/spreadsheets/d/1xxxx/edit';
+const SPREADSHEET_URL_OR_ID = '';
+
+// シート名定義
 const SHEET_RECORD_NAME = 'B品報告実績';
 const SHEET_MASTER_NAME = '商品マスタ';
 
@@ -41,6 +51,33 @@ const MASTER_HEADERS = [
 ];
 
 /**
+ * 対象スプレッドシートを取得（URL指定 / ID指定 / getActiveSpreadsheet）
+ */
+function getTargetSpreadsheet(optionalUrlOrId) {
+  const target = (optionalUrlOrId && String(optionalUrlOrId).trim()) 
+    || SPREADSHEET_URL_OR_ID.trim();
+
+  if (target) {
+    try {
+      if (target.startsWith('http://') || target.startsWith('https://')) {
+        return SpreadsheetApp.openByUrl(target);
+      } else {
+        return SpreadsheetApp.openById(target);
+      }
+    } catch (err) {
+      throw new Error('指定されたスプレッドシートを開けませんでした。URL/IDおよびGoogleアカウントの共有権限を確認してください: ' + err.toString());
+    }
+  }
+
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active) {
+    return active;
+  }
+
+  throw new Error('【スプレッドシート未指定エラー】\n対象のスプレッドシートが見つかりません。\n\n【解決策】\n① スプレッドシートを開き、上のメニューの「拡張機能 > Apps Script」を開いてこのコードをデプロイする。\nまたは\n② code.gs 先頭の SPREADSHEET_URL_OR_ID にスプレッドシートのURLを貼り付ける。\nまたは\n③ アプリ画面下の設定欄でスプレッドシートURLを入力してください。');
+}
+
+/**
  * Web App の GET リクエスト処理
  * - HTML画面の表示
  * - マスタデータ取得 API (?action=getMaster)
@@ -48,34 +85,52 @@ const MASTER_HEADERS = [
  */
 function doGet(e) {
   const action = (e && e.parameter && e.parameter.action) ? e.parameter.action : '';
+  const spreadsheetUrl = (e && e.parameter && e.parameter.spreadsheetUrl) ? e.parameter.spreadsheetUrl : '';
 
   // 1. 商品マスタ取得 API
   if (action === 'getMaster') {
-    const masterData = getProductMasterData();
-    return createJsonResponse({
-      success: true,
-      master: masterData,
-      count: masterData.length
-    });
+    try {
+      const ss = getTargetSpreadsheet(spreadsheetUrl);
+      const masterData = getProductMasterData(ss);
+      return createJsonResponse({
+        success: true,
+        master: masterData,
+        count: masterData.length,
+        sheetName: ss.getName()
+      });
+    } catch (err) {
+      return createJsonResponse({
+        success: false,
+        error: err.toString()
+      });
+    }
   }
 
   // 2. 疎通確認・現在番号確認 API
   if (action === 'ping') {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = getOrCreateRecordSheet(ss);
-    const lastRow = sheet.getLastRow();
-    let currentLastNo = 0;
-    if (lastRow > 1) {
-      const val = sheet.getRange(lastRow, 1).getValue();
-      currentLastNo = Number(val) || 0;
+    try {
+      const ss = getTargetSpreadsheet(spreadsheetUrl);
+      const sheet = getOrCreateRecordSheet(ss);
+      const lastRow = sheet.getLastRow();
+      let currentLastNo = 0;
+      if (lastRow > 1) {
+        const val = sheet.getRange(lastRow, 1).getValue();
+        currentLastNo = Number(val) || 0;
+      }
+      return createJsonResponse({
+        status: 'ok',
+        success: true,
+        sheetName: ss.getName(),
+        lastNumber: currentLastNo,
+        timestamp: Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss')
+      });
+    } catch (err) {
+      return createJsonResponse({
+        status: 'error',
+        success: false,
+        error: err.toString()
+      });
     }
-    return createJsonResponse({
-      status: 'ok',
-      success: true,
-      sheetName: ss.getName(),
-      lastNumber: currentLastNo,
-      timestamp: Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm:ss')
-    });
   }
 
   // 3. GAS Web AppとしてHTMLを直接配信する場合
@@ -139,7 +194,7 @@ function sendInventoryData(data) {
   }
 
   try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const ss = getTargetSpreadsheet(data && (data.spreadsheetUrl || data.spreadsheetId));
     const sheet = getOrCreateRecordSheet(ss);
 
     const lastRow = sheet.getLastRow();
@@ -220,6 +275,7 @@ function sendInventoryData(data) {
       endNumber: endNumber,
       count: quantity,
       timestamp: formattedTimestamp,
+      sheetName: ss.getName(),
       productName: (data.name1 || '') + ' ' + (data.name2 || ''),
       message: quantity > 1
         ? '正常に記録され、' + quantity + '点分の通し番号（No.' + startNumber + ' ～ No.' + endNumber + '）が発番されました。'
@@ -240,8 +296,8 @@ function sendInventoryData(data) {
 /**
  * 商品マスタシートから全件取得
  */
-function getProductMasterData() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+function getProductMasterData(optionalSs) {
+  const ss = optionalSs || getTargetSpreadsheet();
   const sheet = getOrCreateMasterSheet(ss);
   const lastRow = sheet.getLastRow();
 
