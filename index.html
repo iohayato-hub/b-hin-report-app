@@ -159,6 +159,15 @@
           <p class="text-[10px] text-slate-400 mt-1">※URLを入力すると端末(localStorage)に自動保存されます。</p>
         </div>
 
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="text-xs font-bold text-slate-700">GoogleスプレッドシートURL / ID <span class="text-[10px] text-slate-400 font-normal">（任意）</span></label>
+            <span id="sheetAutoSaveIndicator" class="text-[10px] font-bold text-emerald-600 hidden">✓ 自動保存済</span>
+          </div>
+          <input type="text" id="spreadsheetUrlInput" oninput="onSpreadsheetUrlChange(this.value)" placeholder="https://docs.google.com/spreadsheets/d/.../edit" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
+          <p class="text-[10px] text-slate-400 mt-1">※スプレッドシートの「拡張機能 &gt; Apps Script」から開いている場合は空欄でOKです。別シートに出力したい場合はURLを入力してください。</p>
+        </div>
+
         <button type="button" id="btnSyncMaster" onclick="syncMasterFromGas()" class="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs">
           <span>🔄 商品マスタを同期</span>
           <span id="masterSyncCount" class="text-[10px] opacity-80">(0件)</span>
@@ -485,7 +494,9 @@
           })
           .getProductMasterData();
       } else {
-        const endpoint = url + (url.includes('?') ? '&' : '?') + 'action=getMaster&t=' + Date.now();
+        const sheetUrl = localStorage.getItem('bhin_spreadsheet_url') || '';
+        const sheetParam = sheetUrl ? '&spreadsheetUrl=' + encodeURIComponent(sheetUrl) : '';
+        const endpoint = url + (url.includes('?') ? '&' : '?') + 'action=getMaster&t=' + Date.now() + sheetParam;
         fetch(endpoint)
           .then(res => res.json())
           .then(data => {
@@ -814,7 +825,8 @@
         name2: selectedProduct.name2,
         size: selectedProduct.size,
         janCode: selectedProduct.janCode,
-        quantity: quantity
+        quantity: quantity,
+        spreadsheetUrl: localStorage.getItem('bhin_spreadsheet_url') || ''
       };
 
       setSubmitLoading(true);
@@ -836,18 +848,32 @@
           })
           .sendInventoryData(payload);
       } else {
-        setTimeout(() => {
+        const gasUrl = localStorage.getItem('bhin_gas_endpoint') || '';
+        if (gasUrl && (gasUrl.startsWith('http://') || gasUrl.startsWith('https://'))) {
+          fetch(gasUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'sendInventoryData', payload: payload })
+          })
+          .then(res => res.json())
+          .then(res => {
+            setSubmitLoading(false);
+            if (res && res.success) {
+              const numbers = res.assignedNumbers || [res.assignedNumber];
+              onReportSuccess(numbers, payload, res.timestamp);
+            } else {
+              alert('スプレッドシート保存エラー:\n' + (res.error || '不明なエラー'));
+            }
+          })
+          .catch(err => {
+            setSubmitLoading(false);
+            alert('GAS通信エラー: ' + err.message + '\n\n【確認事項】\n1. GASデプロイ設定の「アクセスできるユーザー」が「全員 (Anyone)」になっているか確認してください。\n2. スプレッドシートのURLが正しいか確認してください。');
+          });
+        } else {
           setSubmitLoading(false);
-          let lastNo = parseInt(localStorage.getItem('bhin_last_seq_no') || '100', 10);
-          const numbers = [];
-          for (let i = 1; i <= quantity; i++) numbers.push(lastNo + i);
-          localStorage.setItem('bhin_last_seq_no', (lastNo + quantity).toString());
-
-          const d = new Date();
-          const pad = n => n.toString().padStart(2, '0');
-          const timeStr = d.getFullYear() + '/' + pad(d.getMonth()+1) + '/' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-          onReportSuccess(numbers, payload, timeStr);
-        }, 500);
+          alert('【未設定エラー】\nGAS WebアプリURLが設定されていません。\n画面最下部の「⚙️ 設定（GAS URL入力 ＆ 商品マスタ読込）」にURLを入力してください。');
+          openGasAccordion();
+        }
       }
     }
 
