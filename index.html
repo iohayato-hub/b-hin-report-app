@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>B品報告アプリ (スマホ特化版)</title>
   <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="[suspicious link removed]"></script>
   <!-- html5-qrcode CDN -->
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="[suspicious link removed]"></script>
   <!-- Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@700;800&family=Noto+Sans+JP:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="preconnect" href="[suspicious link removed]">
+  <link rel="preconnect" href="[suspicious link removed]" crossorigin>
+  <link href="[suspicious link removed]" rel="stylesheet">
   <style>
     body { font-family: 'Noto Sans JP', sans-serif; -webkit-tap-highlight-color: transparent; }
     .font-mono-num { font-family: 'JetBrains Mono', monospace; }
@@ -252,7 +252,7 @@
         <h3 class="text-base font-black text-slate-900">商品マスタ手動検索</h3>
         <button onclick="closeSearchModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold">&times;</button>
       </div>
-      <input type="text" id="searchInput" placeholder="JAN / 商品名 / コードで検索..."
+      <input type="text" id="searchInput" placeholder="JAN / 商品名 / カラー / コードで検索..."
         class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-900 focus:outline-none"
         oninput="filterMasterList(this.value)">
       <div id="searchResultsList" class="overflow-y-auto flex-1 divide-y divide-slate-100 pr-1 space-y-1"></div>
@@ -755,7 +755,7 @@
       }
     }
 
-    // 7. 手動検索モーダル
+    // 7. 手動検索モーダル（商品コード・商品名・商品名2・サイズ視認性強化版）
     function openSearchModal() {
       document.getElementById('searchInput').value = '';
       filterMasterList('');
@@ -768,24 +768,41 @@
       const q = query.toLowerCase().trim();
       const list = document.getElementById('searchResultsList');
       list.innerHTML = '';
+
+      // 絞り込み判定（JANコードでも検索は可能にしつつ、表示からは除外）
       const filtered = productMaster.filter(p =>
         p.productCode.toLowerCase().includes(q) ||
         p.name1.toLowerCase().includes(q) ||
+        (p.name2 && p.name2.toLowerCase().includes(q)) ||
         p.janCode.includes(q)
       );
+
       if (filtered.length === 0) {
         list.innerHTML = '<div class="py-6 text-center text-xs text-slate-400">該当する商品がありません</div>';
         return;
       }
+
       filtered.forEach(p => {
         const row = document.createElement('div');
-        row.className = 'p-3 hover:bg-slate-50 cursor-pointer rounded-xl flex items-center justify-between transition';
+        row.className = 'p-3.5 mb-2 hover:bg-slate-100/80 active:bg-slate-100 cursor-pointer rounded-2xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between space-x-3 transition shadow-xs';
         row.onclick = () => selectProduct(p);
-        row.innerHTML = '<div>' +
-          '<div class="font-bold text-xs text-slate-900">' + p.name1 + '</div>' +
-          '<div class="text-[11px] text-slate-500 font-mono-num">' + p.productCode + ' / ' + p.size + ' / ' + p.janCode + '</div>' +
+
+        // 商品コード・商品名1・商品名2・サイズを大きく表示し、JANコードは表示しない構造
+        row.innerHTML = 
+          '<div class="space-y-1.5 min-w-0 flex-1">' +
+            // 1. 商品コード & サイズ（大きめバッジ表示）
+            '<div class="flex items-center space-x-2 flex-wrap gap-y-1">' +
+              '<span class="font-mono-num text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded-md tracking-wide">' + p.productCode + '</span>' +
+              '<span class="font-black text-xs bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md border border-indigo-200">サイズ: ' + p.size + '</span>' +
+            '</div>' +
+            // 2. 商品名1（大きく太字表示）
+            '<div class="font-black text-sm text-slate-900 leading-snug">' + p.name1 + '</div>' +
+            // 3. 商品名2（カラー等：アクセント表示）
+            (p.name2 ? '<div class="text-xs font-extrabold text-rose-700 bg-rose-50 border border-rose-200/70 px-2 py-0.5 rounded-md inline-block">' + p.name2 + '</div>' : '') +
           '</div>' +
-          '<button class="px-2.5 py-1 text-xs bg-slate-900 text-white rounded-lg font-bold">選択</button>';
+          // 選択ボタン
+          '<button type="button" class="px-3.5 py-2 text-xs bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black shrink-0 active:scale-95 transition shadow-sm">選択</button>';
+
         list.appendChild(row);
       });
     }
