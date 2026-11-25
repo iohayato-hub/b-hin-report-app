@@ -23,20 +23,30 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen antialiased select-none" style="padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));">
 
-  <!-- 1. コンパクトヘッダー (初期設定の折りたたみ・省スペース化) -->
+  <!-- 1. コンパクトヘッダー (当日履歴・初期設定の折りたたみ・省スペース化) -->
   <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
-    <div class="max-w-md mx-auto px-3.5 py-2 flex items-center justify-between">
-      <div class="flex items-center space-x-2">
+    <div class="max-w-md mx-auto px-3.5 py-2 flex items-center justify-between gap-1.5">
+      <div class="flex items-center space-x-2 shrink-0">
         <div class="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center font-black text-white text-xs shadow-xs">B</div>
         <span class="font-extrabold text-sm tracking-tight">B品報告</span>
       </div>
-      <!-- 設定チップ（タップで作業者・移動元を変更） -->
-      <button onclick="openConfigModal()" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 px-3 py-1 rounded-full text-xs font-semibold border border-slate-700 active:scale-95 transition">
-        <svg class="w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-        <span id="headerWorkerName" class="font-bold text-emerald-400 max-w-[90px] truncate">未設定</span>
-        <span class="text-slate-500">|</span>
-        <span class="font-mono text-slate-300">元:<span id="headerSourceWh">1001</span></span>
-      </button>
+
+      <div class="flex items-center space-x-1.5 min-w-0">
+        <!-- ★追加: 当日送信履歴ボタン -->
+        <button type="button" onclick="openHistoryModal()" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 rounded-full text-xs font-bold border border-indigo-400/50 active:scale-95 transition shrink-0">
+          <svg class="w-3.5 h-3.5 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+          <span>履歴</span>
+          <span id="headerHistoryCount" class="font-mono-num bg-white text-indigo-900 px-1.5 py-0.2 rounded-full text-[10px] font-black">0</span>
+        </button>
+
+        <!-- 設定チップ（タップで作業者・移動元を変更） -->
+        <button type="button" onclick="openConfigModal()" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-700 active:scale-95 transition min-w-0">
+          <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+          <span id="headerWorkerName" class="font-bold text-emerald-400 max-w-[72px] truncate">未設定</span>
+          <span class="text-slate-500">|</span>
+          <span class="font-mono text-slate-300 shrink-0">元:<span id="headerSourceWh">1001</span></span>
+        </button>
+      </div>
     </div>
   </header>
 
@@ -133,7 +143,7 @@
       </div>
       <div class="flex items-center space-x-2">
         <button type="button" onclick="adjustQty(-1)" class="w-12 h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-90 flex items-center justify-center text-2xl font-black text-slate-800 select-none">-</button>
-        <input type="number" id="quantity" min="1" max="999" value="1" class="w-16 h-12 text-center font-mono-num font-black text-2xl bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-slate-900 focus:outline-none">
+        <input type="number" id="quantity" min="1" max="999" value="1" oninput="updateSubmitBtn()" onchange="clampQuantityInput()" class="w-16 h-12 text-center font-mono-num font-black text-2xl bg-slate-50 border border-slate-300 rounded-2xl focus:ring-2 focus:ring-slate-900 focus:outline-none">
         <button type="button" onclick="adjustQty(1)" class="w-12 h-12 rounded-2xl bg-slate-100 hover:bg-slate-200 active:scale-90 flex items-center justify-center text-2xl font-black text-slate-800 select-none">+</button>
       </div>
     </div>
@@ -187,9 +197,86 @@
   <!-- 4. 画面下部固定の特大送信ボタン (Sticky Bottom / iOS Safe Area対応) -->
   <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-lg" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));">
     <div class="max-w-md mx-auto">
-      <button id="submitBtn" type="button" onclick="submitReport()" disabled
+      <button id="submitBtn" type="button" onclick="openConfirmSubmitModal()" disabled
         class="w-full h-14 rounded-2xl font-black text-base shadow-lg transition flex items-center justify-center space-x-2 select-none active:scale-[0.99] bg-slate-200 text-slate-400 cursor-not-allowed">
         <span id="submitBtnText">商品バーコードをスキャンしてください</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ★機能追加①：送信前確認モーダル -->
+  <div id="confirmSubmitModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200">
+      <div class="bg-amber-500 text-slate-950 py-3.5 px-4 font-black text-sm tracking-wide flex items-center justify-center space-x-1.5">
+        <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+        <span>送信前の最終確認</span>
+      </div>
+      <div class="p-5 space-y-4">
+        <p class="text-center font-black text-base text-slate-900">このリストで間違いありませんか？</p>
+
+        <div class="bg-slate-50 rounded-2xl p-3.5 text-left text-xs space-y-2 text-slate-700 border border-slate-200">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">作業者 / 移動元:</span>
+            <span id="confirmWorkerAndSource" class="font-bold text-slate-800"></span>
+          </div>
+          <div class="border-t border-slate-200/70 pt-2">
+            <div class="flex items-center space-x-1.5 mb-1">
+              <span id="confirmProductCode" class="font-mono-num text-[11px] font-bold bg-slate-200 text-slate-800 px-1.5 py-0.5 rounded"></span>
+              <span id="confirmSize" class="font-bold text-[11px] bg-indigo-100 text-indigo-800 px-1.5 py-0.5 rounded"></span>
+            </div>
+            <p id="confirmProductName" class="font-black text-sm text-slate-900 leading-snug"></p>
+            <p id="confirmProductName2" class="text-[11px] text-slate-500 mt-0.5"></p>
+          </div>
+          <div class="border-t border-slate-200/70 pt-2 flex justify-between items-center">
+            <span class="text-slate-400">移動先倉庫:</span>
+            <span id="confirmDest" class="font-black text-slate-900"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">発生理由:</span>
+            <span id="confirmReason" class="font-black text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200"></span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-slate-400">数量:</span>
+            <span id="confirmQuantity" class="font-black text-rose-600 font-mono-num text-base"></span>
+          </div>
+        </div>
+
+        <div class="space-y-2">
+          <button type="button" onclick="confirmAndSubmitReport()" class="w-full h-13 py-3.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-black rounded-2xl text-sm shadow-md transition flex items-center justify-center space-x-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+            <span>間違いないので送信する</span>
+          </button>
+          <button type="button" onclick="closeConfirmSubmitModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 font-bold rounded-xl text-xs transition">
+            戻って修正する
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★機能追加②：当日限定送信履歴モーダル -->
+  <div id="historyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 hidden">
+    <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl flex flex-col max-h-[85vh] border border-slate-200">
+      <div class="flex justify-between items-start mb-2">
+        <div>
+          <div class="flex items-center space-x-2">
+            <h3 class="text-base font-black text-slate-900">本日の送信履歴</h3>
+            <span id="historyModalDateBadge" class="text-[10px] font-mono-num font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-2 py-0.5 rounded-full"></span>
+          </div>
+          <p class="text-[11px] text-slate-500 mt-0.5">重複防止用（日付が変わると自動クリア）</p>
+        </div>
+        <button type="button" onclick="closeHistoryModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none px-1">&times;</button>
+      </div>
+
+      <div class="bg-slate-900 text-white rounded-2xl px-3.5 py-2.5 mb-3 flex items-center justify-between text-xs">
+        <span>本日送信件数: <strong id="historyTotalRecords" class="font-mono-num text-emerald-400 text-sm">0</strong> 件</span>
+        <span>合計数量: <strong id="historyTotalQty" class="font-mono-num text-amber-400 text-sm">0</strong> 点</span>
+      </div>
+
+      <div id="historyListContainer" class="overflow-y-auto flex-1 space-y-2 pr-0.5"></div>
+
+      <button type="button" onclick="closeHistoryModal()" class="mt-3 w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 font-black rounded-2xl text-xs transition">
+        閉じる
       </button>
     </div>
   </div>
@@ -250,7 +337,7 @@
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl flex flex-col max-h-[85vh]">
       <div class="flex justify-between items-center mb-3">
         <h3 class="text-base font-black text-slate-900">商品マスタ手動検索</h3>
-        <button onclick="closeSearchModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold">&times;</button>
+        <button type="button" onclick="closeSearchModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold">&times;</button>
       </div>
       <input type="text" id="searchInput" placeholder="JAN / 商品名 / カラー / コードで検索..."
         class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-900 focus:outline-none"
@@ -338,6 +425,15 @@
         });
       } catch (e) {}
     }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
   </script>
 
   <!-- Application Logic -->
@@ -353,11 +449,14 @@
       { productCode: 'CD-5010-WHT', name1: 'ハイテンションコード編みパーカー', name2: 'ドローコード / ホワイト', size: 'FREE', janCode: '4560123456789' }
     ];
 
+    const HISTORY_STORAGE_KEY = 'bhin_today_history';
+
     let productMaster = [...DEFAULT_MASTER];
     let selectedProduct = null;
     let selectedDestWh = '1008';
     let selectedReason = 'コード破断';
     let html5QrScanner = null;
+    let isScannerBusy = false;
     let isSubmitting = false;
     let isScanLocked = false;
     let lastScannedTime = 0;
@@ -368,14 +467,18 @@
       initGasSettings();
       loadProductMaster();
       updateSubmitBtn();
+      updateHistoryBadge();
       checkInitialGasPrompt();
     });
 
     // 0. GAS 設定の初期化 & 自動ダイアログ
     function initGasSettings() {
       const url = localStorage.getItem('bhin_gas_endpoint') || '';
+      const sheetUrl = localStorage.getItem('bhin_spreadsheet_url') || '';
       const input = document.getElementById('gasUrlInput');
+      const sheetInput = document.getElementById('spreadsheetUrlInput');
       if (input) input.value = url;
+      if (sheetInput) sheetInput.value = sheetUrl;
       updateGasStatusUI(url);
     }
 
@@ -436,6 +539,15 @@
       }
     }
 
+    function onSpreadsheetUrlChange(val) {
+      localStorage.setItem('bhin_spreadsheet_url', val.trim());
+      const indicator = document.getElementById('sheetAutoSaveIndicator');
+      if (indicator) {
+        indicator.classList.remove('hidden');
+        setTimeout(() => indicator.classList.add('hidden'), 2000);
+      }
+    }
+
     function updateGasStatusUI(url) {
       const badge = document.getElementById('gasStatusBadge');
       const sub = document.getElementById('gasAccordionSubtitle');
@@ -454,6 +566,16 @@
       }
     }
 
+    function normalizeMasterItem(item) {
+      return {
+        productCode: String(item.productCode || '').trim(),
+        name1: String(item.name1 || '').trim(),
+        name2: String(item.name2 || '').trim(),
+        size: String(item.size || '-').trim() || '-',
+        janCode: String(item.janCode || '').trim()
+      };
+    }
+
     function syncMasterFromGas() {
       const url = localStorage.getItem('bhin_gas_endpoint') || '';
       const btn = document.getElementById('btnSyncMaster');
@@ -464,21 +586,25 @@
         return;
       }
 
-      if (btn) btn.innerHTML = '<span>🔄 同期中...</span>';
+      if (btn) btn.disabled = true;
+
+      const onMasterLoaded = (master) => {
+        if (btn) btn.disabled = false;
+        if (Array.isArray(master) && master.length > 0) {
+          productMaster = master.map(normalizeMasterItem);
+          localStorage.setItem('bhin_product_master', JSON.stringify(productMaster));
+          showSyncNotice(true, '商品マスタ同期完了: ' + productMaster.length + '件取得しました。');
+          updateGasStatusUI(url);
+        } else {
+          showSyncNotice(false, '商品マスタの件数が0件でした。');
+        }
+      };
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
-          .withSuccessHandler(function(master) {
-            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span> <span id="masterSyncCount" class="text-[10px] opacity-80">(' + (master ? master.length : 0) + '件)</span>';
-            if (Array.isArray(master) && master.length > 0) {
-              productMaster = master;
-              localStorage.setItem('bhin_product_master', JSON.stringify(master));
-              showSyncNotice(true, '商品マスタ同期完了: ' + master.length + '件取得しました。');
-              updateGasStatusUI(url);
-            }
-          })
+          .withSuccessHandler(onMasterLoaded)
           .withFailureHandler(function(err) {
-            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span>';
+            if (btn) btn.disabled = false;
             showSyncNotice(false, '同期失敗: ' + err);
           })
           .getProductMasterData();
@@ -489,18 +615,15 @@
         fetch(endpoint)
           .then(res => res.json())
           .then(data => {
-            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span> <span id="masterSyncCount" class="text-[10px] opacity-80">(' + (data.master ? data.master.length : 0) + '件)</span>';
+            if (btn) btn.disabled = false;
             if (data.success && Array.isArray(data.master)) {
-              productMaster = data.master;
-              localStorage.setItem('bhin_product_master', JSON.stringify(data.master));
-              showSyncNotice(true, '商品マスタ同期完了: ' + data.master.length + '件取得しました。');
-              updateGasStatusUI(url);
+              onMasterLoaded(data.master);
             } else {
               showSyncNotice(false, '同期エラー: ' + (data.error || '不明'));
             }
           })
           .catch(err => {
-            if (btn) btn.innerHTML = '<span>🔄 商品マスタを同期</span>';
+            if (btn) btn.disabled = false;
             showSyncNotice(false, '通信エラー: ' + err.message + '（GASアクセス権を「全員」に設定してください）');
             alert('【同期エラー: ' + err.message + '】\n\nスマホで「Failed to fetch」が表示される場合の解決手順:\n① GASエディタ画面の右上「デプロイ」→「デプロイを管理」を開きます。\n② 鉛筆アイコン（編集）をクリックします。\n③「アクセスできるユーザー」を「自分のみ」から「全員 (Anyone)」に変更します。\n④「バージョン: 新バージョン」を選択して「デプロイ」を押してください。\n\n※WebアプリURLの末尾が「/exec」になっていることもご確認ください。');
           });
@@ -581,7 +704,10 @@
         btn.className = isSelected
           ? 'h-12 rounded-xl text-xs font-black border transition flex items-center justify-center select-none active:scale-95 bg-slate-900 text-white border-slate-900 shadow-xs ring-2 ring-rose-500/60'
           : 'h-12 rounded-xl text-xs font-bold border transition flex items-center justify-center select-none active:scale-95 bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100';
-        btn.innerHTML = `<span class="truncate px-1">${r}</span>`;
+        const span = document.createElement('span');
+        span.className = 'truncate px-1';
+        span.textContent = r;
+        btn.appendChild(span);
         btn.onclick = () => {
           selectedReason = r;
           renderReasonsGrid();
@@ -593,7 +719,7 @@
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'h-12 rounded-xl text-xs font-bold border-2 border-dashed border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 transition flex items-center justify-center space-x-1 active:scale-95 select-none';
-      addBtn.innerHTML = `<span>＋ 理由追加</span>`;
+      addBtn.textContent = '＋ 理由追加';
       addBtn.onclick = () => {
         const val = prompt('新しい発生理由を入力してください:');
         if (val && val.trim()) {
@@ -619,14 +745,16 @@
       if (cached) {
         try {
           const parsed = JSON.parse(cached);
-          if (Array.isArray(parsed) && parsed.length > 0) productMaster = parsed;
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            productMaster = parsed.map(normalizeMasterItem);
+          }
         } catch (e) {}
       }
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run.withSuccessHandler(function(master) {
           if (Array.isArray(master) && master.length > 0) {
-            productMaster = master;
-            localStorage.setItem('bhin_product_master', JSON.stringify(master));
+            productMaster = master.map(normalizeMasterItem);
+            localStorage.setItem('bhin_product_master', JSON.stringify(productMaster));
           }
         }).getProductMasterData();
       }
@@ -641,90 +769,102 @@
       updateSubmitBtn();
     }
 
-    // 6. バーコードスキャナ (html5-qrcode: 爆速・高感度JAN専用)
-    function startScanner() {
-      const wrapper = document.getElementById('scannerWrapper');
-      wrapper.classList.remove('hidden');
-
-      if (!html5QrScanner) {
-        html5QrScanner = new Html5Qrcode("reader", {
-          formatsToSupport: [
-            Html5QrcodeSupportedFormats.EAN_13,
-            Html5QrcodeSupportedFormats.EAN_8,
-            Html5QrcodeSupportedFormats.CODE_128
-          ],
-          verbose: false
-        });
-      }
-
-      const config = {
-        fps: 25,
-        qrbox: { width: 280, height: 120 },
-        aspectRatio: 1.777778
-      };
-
-      html5QrScanner.start(
-        { facingMode: "environment" },
-        config,
-        (decodedText) => {
-          const now = Date.now();
-          if (isScanLocked || now - lastScannedTime < 1500) return;
-          isScanLocked = true;
-          lastScannedTime = now;
-
-          playBeep();
-          if (navigator.vibrate) {
-            try { navigator.vibrate(100); } catch (e) {}
-          }
-          stopScanner();
-          handleBarcodeScanned(decodedText.trim());
-
-          setTimeout(() => { isScanLocked = false; }, 1500);
-        },
-        () => {}
-      ).catch(err => {
-        alert("カメラ起動エラー: " + err);
-        stopScanner();
-      });
+    function clampQuantityInput() {
+      const input = document.getElementById('quantity');
+      const val = parseInt(input.value, 10);
+      input.value = (!isNaN(val) && val >= 1) ? val : 1;
+      updateSubmitBtn();
     }
 
-    function stopScanner() {
-      if (html5QrScanner) {
-        html5QrScanner.stop().then(() => {
-          document.getElementById('scannerWrapper').classList.add('hidden');
-        }).catch(() => {
-          document.getElementById('scannerWrapper').classList.add('hidden');
-        });
-      } else {
-        document.getElementById('scannerWrapper').classList.add('hidden');
+    // 6. バーコードスキャナ (html5-qrcode: 爆速・高感度JAN専用)
+    async function startScanner() {
+      if (isScannerBusy) return;
+      isScannerBusy = true;
+      try {
+        if (html5QrScanner) {
+          try { await html5QrScanner.stop(); } catch (e) {}
+        }
+        const wrapper = document.getElementById('scannerWrapper');
+        wrapper.classList.remove('hidden');
+
+        if (!html5QrScanner) {
+          html5QrScanner = new Html5Qrcode("reader", {
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.CODE_128
+            ],
+            verbose: false
+          });
+        }
+
+        const config = {
+          fps: 25,
+          qrbox: { width: 280, height: 120 },
+          aspectRatio: 1.777778
+        };
+
+        await html5QrScanner.start(
+          { facingMode: "environment" },
+          config,
+          (decodedText) => {
+            const now = Date.now();
+            if (isScanLocked || now - lastScannedTime < 1500) return;
+            isScanLocked = true;
+            lastScannedTime = now;
+
+            playBeep();
+            if (navigator.vibrate) {
+              try { navigator.vibrate(100); } catch (e) {}
+            }
+            stopScanner();
+            handleBarcodeScanned(String(decodedText || '').trim());
+
+            setTimeout(() => { isScanLocked = false; }, 1500);
+          },
+          () => {}
+        );
+      } catch (err) {
+        alert("カメラ起動エラー: " + err);
+        await stopScanner();
+      } finally {
+        isScannerBusy = false;
       }
+    }
+
+    async function stopScanner() {
+      if (html5QrScanner) {
+        try { await html5QrScanner.stop(); } catch (e) {}
+      }
+      document.getElementById('scannerWrapper').classList.add('hidden');
     }
 
     function handleBarcodeScanned(jan) {
-      const match = productMaster.find(p => p.janCode === jan);
+      const cleanJan = String(jan || '').trim();
+      const match = productMaster.find(p => String(p.janCode || '').trim() === cleanJan);
       if (match) {
         selectProduct(match);
       } else {
         selectProduct({
-          productCode: 'JAN-' + jan.slice(-6),
+          productCode: 'JAN-' + cleanJan.slice(-6),
           name1: 'スキャン商品 (マスタ未登録)',
           name2: '手動確認要',
           size: '-',
-          janCode: jan
+          janCode: cleanJan
         });
       }
     }
 
     function selectProduct(product) {
-      selectedProduct = product;
+      selectedProduct = normalizeMasterItem(product);
       document.getElementById('noProductSection').classList.add('hidden');
       document.getElementById('productDetails').classList.remove('hidden');
 
-      document.getElementById('dispProductCode').textContent = product.productCode;
-      document.getElementById('dispSize').textContent = 'SIZE: ' + product.size;
-      document.getElementById('dispName1').textContent = product.name1;
-      document.getElementById('dispName2').textContent = product.name2 || '';
-      document.getElementById('dispJan').textContent = product.janCode;
+      document.getElementById('dispProductCode').textContent = selectedProduct.productCode;
+      document.getElementById('dispSize').textContent = 'SIZE: ' + selectedProduct.size;
+      document.getElementById('dispName1').textContent = selectedProduct.name1;
+      document.getElementById('dispName2').textContent = selectedProduct.name2 || '';
+      document.getElementById('dispJan').textContent = selectedProduct.janCode;
 
       closeSearchModal();
       updateSubmitBtn();
@@ -740,7 +880,7 @@
     function updateSubmitBtn() {
       const btn = document.getElementById('submitBtn');
       const text = document.getElementById('submitBtnText');
-      const qty = parseInt(document.getElementById('quantity').value, 10) || 1;
+      const qty = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
 
       if (!selectedProduct) {
         btn.disabled = true;
@@ -749,9 +889,9 @@
       } else {
         btn.disabled = false;
         btn.className = 'w-full h-14 rounded-2xl font-black text-base shadow-lg transition flex items-center justify-center space-x-2 select-none active:scale-[0.99] bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30';
-        text.textContent = qty > 1 
-          ? '' + qty + '点 登録する' 
-          : '登録する';
+        text.textContent = qty > 1
+          ? qty + '点 確認して登録する'
+          : '確認して登録する';
       }
     }
 
@@ -765,11 +905,10 @@
       document.getElementById('searchModal').classList.add('hidden');
     }
     function filterMasterList(query) {
-      const q = query.toLowerCase().trim();
+      const q = String(query || '').toLowerCase().trim();
       const list = document.getElementById('searchResultsList');
       list.innerHTML = '';
 
-      // 絞り込み判定（JANコードでも検索は可能にしつつ、表示からは除外）
       const filtered = productMaster.filter(p =>
         p.productCode.toLowerCase().includes(q) ||
         p.name1.toLowerCase().includes(q) ||
@@ -787,24 +926,55 @@
         row.className = 'p-3.5 mb-2 hover:bg-slate-100/80 active:bg-slate-100 cursor-pointer rounded-2xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between space-x-3 transition shadow-xs';
         row.onclick = () => selectProduct(p);
 
-        // 商品コード・商品名1・商品名2・サイズを大きく表示し、JANコードは表示しない構造
         row.innerHTML = 
           '<div class="space-y-1.5 min-w-0 flex-1">' +
-            // 1. 商品コード & サイズ（大きめバッジ表示）
             '<div class="flex items-center space-x-2 flex-wrap gap-y-1">' +
-              '<span class="font-mono-num text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded-md tracking-wide">' + p.productCode + '</span>' +
-              '<span class="font-black text-xs bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md border border-indigo-200">サイズ: ' + p.size + '</span>' +
+              '<span class="font-mono-num text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded-md tracking-wide">' + escapeHtml(p.productCode) + '</span>' +
+              '<span class="font-black text-xs bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md border border-indigo-200">サイズ: ' + escapeHtml(p.size) + '</span>' +
             '</div>' +
-            // 2. 商品名1（大きく太字表示）
-            '<div class="font-black text-sm text-slate-900 leading-snug">' + p.name1 + '</div>' +
-            // 3. 商品名2（カラー等：アクセント表示）
-            (p.name2 ? '<div class="text-xs font-extrabold text-rose-700 bg-rose-50 border border-rose-200/70 px-2 py-0.5 rounded-md inline-block">' + p.name2 + '</div>' : '') +
+            '<div class="font-black text-sm text-slate-900 leading-snug">' + escapeHtml(p.name1) + '</div>' +
+            (p.name2 ? '<div class="text-xs font-extrabold text-rose-700 bg-rose-50 border border-rose-200/70 px-2 py-0.5 rounded-md inline-block">' + escapeHtml(p.name2) + '</div>' : '') +
           '</div>' +
-          // 選択ボタン
           '<button type="button" class="px-3.5 py-2 text-xs bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black shrink-0 active:scale-95 transition shadow-sm">選択</button>';
 
         list.appendChild(row);
       });
+    }
+
+    // ★機能追加①：送信前確認モーダルの開閉
+    function openConfirmSubmitModal() {
+      if (isSubmitting || !selectedProduct) return;
+
+      const worker = localStorage.getItem('bhin_worker_name') || '';
+      if (!worker) {
+        alert('作業者名を設定してください');
+        openConfigModal();
+        return;
+      }
+
+      clampQuantityInput();
+      const sourceWh = localStorage.getItem('bhin_source_warehouse') || '1001';
+      const quantity = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
+
+      document.getElementById('confirmWorkerAndSource').textContent = worker + '（元:' + sourceWh + '）';
+      document.getElementById('confirmProductCode').textContent = selectedProduct.productCode;
+      document.getElementById('confirmSize').textContent = 'SIZE: ' + selectedProduct.size;
+      document.getElementById('confirmProductName').textContent = selectedProduct.name1;
+      document.getElementById('confirmProductName2').textContent = selectedProduct.name2 || '';
+      document.getElementById('confirmDest').textContent = selectedDestWh === '1008' ? 'B品倉庫 (1008)' : '直し倉庫 (1006)';
+      document.getElementById('confirmReason').textContent = selectedReason;
+      document.getElementById('confirmQuantity').textContent = quantity + ' 点';
+
+      document.getElementById('confirmSubmitModal').classList.remove('hidden');
+    }
+
+    function closeConfirmSubmitModal() {
+      document.getElementById('confirmSubmitModal').classList.add('hidden');
+    }
+
+    function confirmAndSubmitReport() {
+      closeConfirmSubmitModal();
+      submitReport();
     }
 
     // 8. 送信処理（スプレッドシートへ直接追記・通し番号なし）
@@ -819,7 +989,7 @@
       }
 
       const sourceWh = localStorage.getItem('bhin_source_warehouse') || '1001';
-      const quantity = parseInt(document.getElementById('quantity').value, 10) || 1;
+      const quantity = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
 
       const payload = {
         workerName: worker,
@@ -894,8 +1064,129 @@
       }
     }
 
-    // 9. 送信完了モーダル（シンプル表示）
+    // ★機能追加②：当日限定送信履歴（日付変更時に前日以前を自動削除）
+    function getTodayDateKey() {
+      const now = new Date();
+      const y = now.getFullYear();
+      const m = String(now.getMonth() + 1).padStart(2, '0');
+      const d = String(now.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getTodayHistoryList() {
+      const todayKey = getTodayDateKey();
+      try {
+        const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!parsed || parsed.date !== todayKey || !Array.isArray(parsed.items)) {
+          localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify({ date: todayKey, items: [] }));
+          return [];
+        }
+        return parsed.items;
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveToTodayHistory(payload, timestamp) {
+      const todayKey = getTodayDateKey();
+      const currentItems = getTodayHistoryList();
+      const now = new Date();
+      const timeOnly = String(now.getHours()).padStart(2, '0') + ':' +
+                       String(now.getMinutes()).padStart(2, '0') + ':' +
+                       String(now.getSeconds()).padStart(2, '0');
+
+      const record = {
+        time: timeOnly,
+        timestamp: timestamp || (todayKey + ' ' + timeOnly),
+        workerName: payload.workerName,
+        destWarehouse: payload.destWarehouse,
+        reason: payload.reason,
+        productCode: payload.productCode,
+        name1: payload.name1,
+        size: payload.size,
+        quantity: payload.quantity
+      };
+
+      const updatedItems = [record, ...currentItems];
+      try {
+        localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify({
+          date: todayKey,
+          items: updatedItems
+        }));
+      } catch (e) {}
+      updateHistoryBadge();
+    }
+
+    function updateHistoryBadge() {
+      const list = getTodayHistoryList();
+      const badge = document.getElementById('headerHistoryCount');
+      if (badge) badge.textContent = list.length;
+    }
+
+    function openHistoryModal() {
+      const todayKey = getTodayDateKey();
+      const list = getTodayHistoryList();
+      updateHistoryBadge();
+
+      document.getElementById('historyModalDateBadge').textContent = todayKey;
+      document.getElementById('historyTotalRecords').textContent = list.length;
+      const totalQty = list.reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+      document.getElementById('historyTotalQty').textContent = totalQty;
+
+      const container = document.getElementById('historyListContainer');
+      container.innerHTML = '';
+
+      if (list.length === 0) {
+        container.innerHTML =
+          '<div class="py-10 text-center text-xs text-slate-400 space-y-1">' +
+            '<p class="font-bold text-slate-500">本日の送信履歴はまだありません</p>' +
+            '<p>送信完了したデータがここに表示されます</p>' +
+          '</div>';
+      } else {
+        list.forEach((item, index) => {
+          const isBhin = item.destWarehouse === '1008';
+          const destBadgeClass = isBhin
+            ? 'bg-amber-100 text-amber-900 border-amber-300'
+            : 'bg-blue-100 text-blue-900 border-blue-300';
+          const destLabel = isBhin ? 'B品(1008)' : '直し(1006)';
+          const seqNum = list.length - index;
+
+          const card = document.createElement('div');
+          card.className = 'p-3 rounded-2xl border border-slate-200 bg-slate-50/80 space-y-1.5 text-xs';
+          card.innerHTML =
+            '<div class="flex items-center justify-between">' +
+              '<div class="flex items-center space-x-1.5">' +
+                '<span class="font-mono-num text-[10px] font-black bg-slate-800 text-white px-1.5 py-0.5 rounded">#' + seqNum + '</span>' +
+                '<span class="font-mono-num text-[11px] font-bold text-slate-500">' + escapeHtml(item.time) + '</span>' +
+                '<span class="text-[10px] font-bold px-1.5 py-0.5 rounded border ' + destBadgeClass + '">' + destLabel + '</span>' +
+              '</div>' +
+              '<span class="font-mono-num font-black text-sm text-rose-600">' + Number(item.quantity || 0) + ' 点</span>' +
+            '</div>' +
+            '<div class="flex items-center space-x-1.5">' +
+              '<span class="font-mono-num text-[11px] font-bold text-slate-700">' + escapeHtml(item.productCode) + '</span>' +
+              '<span class="text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded">SIZE: ' + escapeHtml(item.size) + '</span>' +
+            '</div>' +
+            '<p class="font-black text-slate-900 leading-snug">' + escapeHtml(item.name1) + '</p>' +
+            '<div class="flex items-center justify-between pt-1 border-t border-slate-200/70 text-[11px]">' +
+              '<span class="font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200/80">理由: ' + escapeHtml(item.reason) + '</span>' +
+              '<span class="text-slate-500 truncate max-w-[110px]">担当: ' + escapeHtml(item.workerName) + '</span>' +
+            '</div>';
+          container.appendChild(card);
+        });
+      }
+
+      document.getElementById('historyModal').classList.remove('hidden');
+    }
+
+    function closeHistoryModal() {
+      document.getElementById('historyModal').classList.add('hidden');
+    }
+
+    // 9. 送信完了モーダル（シンプル表示 ＋ 当日履歴へ記録）
     function onReportSuccess(payload, timestamp) {
+      saveToTodayHistory(payload, timestamp);
       playSuccessChime();
       document.getElementById('modalProductCode').textContent = payload.productCode;
       document.getElementById('modalProductName').textContent = payload.name1;
@@ -913,7 +1204,6 @@
       clearSelectedProduct();
       document.getElementById('quantity').value = 1;
       updateSubmitBtn();
-      // 直ちにカメラを起動
       startScanner();
     }
   </script>
