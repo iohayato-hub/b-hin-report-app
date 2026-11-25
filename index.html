@@ -8,6 +8,8 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- html5-qrcode CDN -->
   <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <!-- Chart.js CDN (集計グラフ表示用) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,26 +25,29 @@
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen antialiased select-none" style="padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));">
 
-  <!-- 1. コンパクトヘッダー (当日履歴・初期設定の折りたたみ・省スペース化) -->
+  <!-- 1. コンパクトヘッダー (当日履歴・集計分析・初期設定) -->
   <header class="bg-slate-900 text-white sticky top-0 z-30 shadow-md">
-    <div class="max-w-md mx-auto px-3.5 py-2 flex items-center justify-between gap-1.5">
-      <div class="flex items-center space-x-2 shrink-0">
+    <div class="max-w-md mx-auto px-3 py-2 flex items-center justify-between gap-1.5">
+      <div class="flex items-center space-x-1.5 shrink-0">
         <div class="w-7 h-7 rounded-lg bg-rose-600 flex items-center justify-center font-black text-white text-xs shadow-xs">B</div>
-        <span class="font-extrabold text-sm tracking-tight">B品報告</span>
+        <span class="font-extrabold text-xs sm:text-sm tracking-tight">B品報告</span>
       </div>
 
-      <div class="flex items-center space-x-1.5 min-w-0">
-        <!-- ★追加: 当日送信履歴ボタン -->
-        <button type="button" onclick="openHistoryModal()" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-500 px-2.5 py-1 rounded-full text-xs font-bold border border-indigo-400/50 active:scale-95 transition shrink-0">
-          <svg class="w-3.5 h-3.5 text-indigo-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+      <div class="flex items-center space-x-1 min-w-0">
+        <!-- 当日送信履歴ボタン -->
+        <button type="button" onclick="openHistoryModal()" class="flex items-center space-x-1 bg-indigo-600 hover:bg-indigo-500 px-2 py-1 rounded-full text-[11px] font-bold border border-indigo-400/50 active:scale-95 transition shrink-0">
           <span>履歴</span>
-          <span id="headerHistoryCount" class="font-mono-num bg-white text-indigo-900 px-1.5 py-0.2 rounded-full text-[10px] font-black">0</span>
+          <span id="headerHistoryCount" class="font-mono-num bg-white text-indigo-900 px-1.5 rounded-full text-[10px] font-black">0</span>
+        </button>
+
+        <!-- 集計データ（グラフ）ボタン -->
+        <button type="button" onclick="openAnalyticsModal()" class="flex items-center space-x-1 bg-emerald-600 hover:bg-emerald-500 px-2 py-1 rounded-full text-[11px] font-bold border border-emerald-400/50 active:scale-95 transition shrink-0">
+          <span>集計</span>
         </button>
 
         <!-- 設定チップ（タップで作業者・移動元を変更） -->
-        <button type="button" onclick="openConfigModal()" class="flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-full text-xs font-semibold border border-slate-700 active:scale-95 transition min-w-0">
-          <svg class="w-3 h-3 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-          <span id="headerWorkerName" class="font-bold text-emerald-400 max-w-[72px] truncate">未設定</span>
+        <button type="button" onclick="openConfigModal()" class="flex items-center space-x-1 bg-slate-800 hover:bg-slate-700 px-2.5 py-1 rounded-full text-[11px] font-semibold border border-slate-700 active:scale-95 transition min-w-0">
+          <span id="headerWorkerName" class="font-bold text-emerald-400 max-w-[58px] truncate">未設定</span>
           <span class="text-slate-500">|</span>
           <span class="font-mono text-slate-300 shrink-0">元:<span id="headerSourceWh">1001</span></span>
         </button>
@@ -83,7 +88,7 @@
         </button>
       </div>
 
-      <!-- スキャン成功時: ★商品名・サイズを画面中央に大きく太字表示 -->
+      <!-- スキャン成功時: 商品名・サイズを画面中央に大きく太字表示 -->
       <div id="productDetails" class="hidden space-y-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center space-x-2">
@@ -128,11 +133,7 @@
         <label class="text-xs font-extrabold text-slate-700">発生理由 <span class="text-rose-500">*</span></label>
         <span class="text-[10px] text-slate-400">タップで即切替</span>
       </div>
-
-      <!-- 理由ボタングリッド（3列表示） -->
-      <div id="reasonsGrid" class="grid grid-cols-3 gap-2">
-        <!-- Rendered by JS -->
-      </div>
+      <div id="reasonsGrid" class="grid grid-cols-3 gap-2"></div>
     </div>
 
     <!-- 5. 数量ステッパー -->
@@ -180,35 +181,32 @@
             <span id="sheetAutoSaveIndicator" class="text-[10px] font-bold text-emerald-600 hidden">✓ 自動保存済</span>
           </div>
           <input type="text" id="spreadsheetUrlInput" oninput="onSpreadsheetUrlChange(this.value)" placeholder="https://docs.google.com/spreadsheets/d/.../edit" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          <p class="text-[10px] text-slate-400 mt-1">※スプレッドシートの「拡張機能 &gt; Apps Script」から開いている場合は空欄でOKです。別シートに出力したい場合はURLを入力してください。</p>
+          <p class="text-[10px] text-slate-400 mt-1">※スプレッドシートの「拡張機能 &gt; Apps Script」から開いている場合は空欄でOKです。</p>
         </div>
 
         <button type="button" id="btnSyncMaster" onclick="syncMasterFromGas()" class="w-full h-11 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white rounded-xl text-xs font-bold transition flex items-center justify-center space-x-1.5 shadow-xs">
           <span>🔄 商品マスタを同期</span>
           <span id="masterSyncCount" class="text-[10px] opacity-80">(0件)</span>
         </button>
-
         <div id="gasSyncResultNotice" class="hidden p-2 rounded-xl text-xs font-medium"></div>
       </div>
     </div>
 
   </main>
 
-  <!-- 4. 画面下部固定の特大送信ボタン (Sticky Bottom / iOS Safe Area対応) -->
+  <!-- 画面下部固定の特大送信ボタン -->
   <div class="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 shadow-lg" style="padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));">
     <div class="max-w-md mx-auto">
-      <button id="submitBtn" type="button" onclick="openConfirmSubmitModal()" disabled
-        class="w-full h-14 rounded-2xl font-black text-base shadow-lg transition flex items-center justify-center space-x-2 select-none active:scale-[0.99] bg-slate-200 text-slate-400 cursor-not-allowed">
+      <button id="submitBtn" type="button" onclick="openConfirmSubmitModal()" disabled class="w-full h-14 rounded-2xl font-black text-base shadow-lg transition flex items-center justify-center space-x-2 select-none active:scale-[0.99] bg-slate-200 text-slate-400 cursor-not-allowed">
         <span id="submitBtnText">商品バーコードをスキャンしてください</span>
       </button>
     </div>
   </div>
 
-  <!-- ★機能追加①：送信前確認モーダル -->
+  <!-- 機能①：送信前確認モーダル -->
   <div id="confirmSubmitModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 hidden">
     <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden border border-slate-200">
       <div class="bg-amber-500 text-slate-950 py-3.5 px-4 font-black text-sm tracking-wide flex items-center justify-center space-x-1.5">
-        <svg class="w-5 h-5 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
         <span>送信前の最終確認</span>
       </div>
       <div class="p-5 space-y-4">
@@ -216,7 +214,7 @@
 
         <div class="bg-slate-50 rounded-2xl p-3.5 text-left text-xs space-y-2 text-slate-700 border border-slate-200">
           <div class="flex justify-between items-center">
-            <span class="text-slate-400">作業者 / 移動元:</span>
+            <span class="text-slate-400">作業者 / 元倉庫:</span>
             <span id="confirmWorkerAndSource" class="font-bold text-slate-800"></span>
           </div>
           <div class="border-t border-slate-200/70 pt-2">
@@ -243,7 +241,6 @@
 
         <div class="space-y-2">
           <button type="button" onclick="confirmAndSubmitReport()" class="w-full h-13 py-3.5 bg-rose-600 hover:bg-rose-700 active:scale-[0.98] text-white font-black rounded-2xl text-sm shadow-md transition flex items-center justify-center space-x-1.5">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
             <span>間違いないので送信する</span>
           </button>
           <button type="button" onclick="closeConfirmSubmitModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 font-bold rounded-xl text-xs transition">
@@ -254,7 +251,7 @@
     </div>
   </div>
 
-  <!-- ★機能追加②：当日限定送信履歴モーダル -->
+  <!-- 機能②：当日限定送信履歴モーダル -->
   <div id="historyModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4 hidden">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl flex flex-col max-h-[85vh] border border-slate-200">
       <div class="flex justify-between items-start mb-2">
@@ -281,15 +278,102 @@
     </div>
   </div>
 
-  <!-- 5. 送信完了モーダル (シンプル化・通し番号なし) -->
+  <!-- 機能③：WEBアプリ内「集計データ」グラフモーダル（1006 直し倉庫 / 1008 B品倉庫・サイズ別・発生理由別） -->
+  <div id="analyticsModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-3.5 hidden">
+    <div class="bg-white rounded-3xl max-w-md w-full p-4 sm:p-5 shadow-2xl flex flex-col max-h-[90vh] border border-slate-200">
+      <div class="flex justify-between items-center mb-2.5">
+        <div>
+          <h3 class="text-base font-black text-slate-900">集計データ分析（WEB画面）</h3>
+          <p id="analyticsUpdatedAt" class="text-[10px] text-slate-400 font-mono-num">スプレッドシート集計</p>
+        </div>
+        <button type="button" onclick="closeAnalyticsModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold leading-none px-1">&times;</button>
+      </div>
+
+      <!-- 期間切替タブ -->
+      <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-2xl mb-3 text-xs font-bold">
+        <button type="button" id="periodBtnToday" onclick="changeSummaryPeriod('today')" class="py-1.5 rounded-xl bg-slate-900 text-white transition">本日</button>
+        <button type="button" id="periodBtnMonth" onclick="changeSummaryPeriod('month')" class="py-1.5 rounded-xl text-slate-600 hover:bg-white/60 transition">今月</button>
+        <button type="button" id="periodBtnAll" onclick="changeSummaryPeriod('all')" class="py-1.5 rounded-xl text-slate-600 hover:bg-white/60 transition">全期間</button>
+      </div>
+
+      <div id="analyticsLoading" class="py-10 text-center text-xs font-bold text-slate-500 hidden">
+        集計データを取得中...
+      </div>
+
+      <div id="analyticsContent" class="overflow-y-auto flex-1 space-y-3.5 pr-0.5">
+        <!-- 倉庫別合計カード（1006 直し倉庫 / 1008 B品倉庫） -->
+        <div class="grid grid-cols-2 gap-2.5">
+          <div class="rounded-2xl p-3 bg-blue-50 border border-blue-200">
+            <div class="text-[11px] font-black text-blue-900">直し倉庫 (1006)</div>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="sumWh1006Qty" class="font-mono-num text-2xl font-black text-blue-700">0</span>
+              <span class="text-xs font-bold text-blue-800">点</span>
+            </div>
+            <div class="text-[10px] text-blue-700/80 mt-0.5">登録 <span id="sumWh1006Rec" class="font-mono-num font-bold">0</span> 件</div>
+          </div>
+
+          <div class="rounded-2xl p-3 bg-amber-50 border border-amber-300">
+            <div class="text-[11px] font-black text-amber-950">B品倉庫 (1008)</div>
+            <div class="flex items-baseline justify-between mt-1">
+              <span id="sumWh1008Qty" class="font-mono-num text-2xl font-black text-amber-700">0</span>
+              <span class="text-xs font-bold text-amber-900">点</span>
+            </div>
+            <div class="text-[10px] text-amber-900/80 mt-0.5">登録 <span id="sumWh1008Rec" class="font-mono-num font-bold">0</span> 件</div>
+          </div>
+        </div>
+
+        <!-- グラフ0: 倉庫別 合計数量 比較グラフ（1006 vs 1008） -->
+        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+          <div class="flex items-center justify-between mb-1.5">
+            <h4 class="text-xs font-black text-slate-800">倉庫別 合計数量比較（1006 / 1008）</h4>
+            <span class="text-[10px] text-slate-400 font-mono-num">総計: <strong id="sumTotalQtyLabel">0</strong>点</span>
+          </div>
+          <div class="relative h-36 w-full">
+            <canvas id="warehouseChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- グラフ1: サイズ別 数量グラフ（1006 / 1008内訳） -->
+        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+          <div class="flex items-center justify-between mb-1.5">
+            <h4 class="text-xs font-black text-slate-800">サイズ別 数量（1006 / 1008内訳）</h4>
+            <span class="text-[10px] text-slate-400">サイズ順</span>
+          </div>
+          <div class="relative h-48 w-full">
+            <canvas id="sizeChartCanvas"></canvas>
+          </div>
+        </div>
+
+        <!-- グラフ2: 発生理由別 数量グラフ（1006 / 1008内訳） -->
+        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-200">
+          <div class="flex items-center justify-between mb-1.5">
+            <h4 class="text-xs font-black text-slate-800">発生理由別 数量（1006 / 1008内訳）</h4>
+            <span class="text-[10px] text-slate-400">数量順</span>
+          </div>
+          <div class="relative h-56 w-full">
+            <canvas id="reasonChartCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-3 flex space-x-2">
+        <button type="button" onclick="fetchAndRenderSummary()" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-black rounded-2xl text-xs transition">
+          🔄 最新集計に更新
+        </button>
+        <button type="button" onclick="closeAnalyticsModal()" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-2xl text-xs transition">
+          閉じる
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 送信完了モーダル -->
   <div id="tagModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 hidden">
-    <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden text-center animate-in fade-in zoom-in-95 duration-200 border border-slate-200">
+    <div class="bg-white rounded-3xl max-w-sm w-full shadow-2xl overflow-hidden text-center border border-slate-200">
       <div class="bg-emerald-600 text-white py-3.5 px-4 font-black text-sm tracking-wide flex items-center justify-center space-x-1.5">
-        <svg class="w-5 h-5 text-emerald-200" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
         <span>送信が完了しました！</span>
       </div>
       <div class="p-5 space-y-3.5">
-        <!-- 登録内容サマリー -->
         <div class="bg-slate-50 rounded-2xl p-4 text-left text-xs space-y-2 text-slate-600 border border-slate-200">
           <div class="flex justify-between items-center"><span class="text-slate-400">商品コード:</span><span id="modalProductCode" class="font-bold text-slate-800 font-mono"></span></div>
           <div class="flex justify-between items-center"><span class="text-slate-400">商品名:</span><span id="modalProductName" class="font-bold text-slate-800 truncate max-w-[190px]"></span></div>
@@ -299,21 +383,18 @@
           <div class="flex justify-between items-center border-t border-slate-200/60 pt-2"><span class="text-slate-400">登録日時:</span><span id="modalTimestamp" class="text-[11px] font-mono text-slate-500"></span></div>
         </div>
 
-        <!-- ★「次のスキャンへ」大ボタンで即カメラ復帰 -->
         <button type="button" onclick="closeTagModalAndNext()" class="w-full h-14 bg-slate-900 hover:bg-slate-800 active:scale-[0.98] text-white font-black rounded-2xl text-base shadow-md transition flex items-center justify-center space-x-2">
           <span>次のスキャンへ</span>
-          <svg class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
         </button>
       </div>
     </div>
   </div>
 
-  <!-- 設定変更モーダル（作業者名 ＆ 移動元倉庫） -->
+  <!-- 設定変更モーダル -->
   <div id="configModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 hidden">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl">
       <h3 class="text-base font-black text-slate-900 mb-1">初期設定の編集</h3>
       <p class="text-xs text-slate-500 mb-4">一度保存すると端末（localStorage）に保持されます。</p>
-      
       <div class="space-y-3 mb-5">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">作業者名</label>
@@ -324,7 +405,6 @@
           <input type="text" id="configSourceWhInput" placeholder="1001" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm font-semibold font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none">
         </div>
       </div>
-
       <div class="flex space-x-2">
         <button type="button" onclick="closeConfigModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">キャンセル</button>
         <button type="button" onclick="saveConfigModal()" class="flex-1 py-2.5 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-xl">保存する</button>
@@ -339,43 +419,34 @@
         <h3 class="text-base font-black text-slate-900">商品マスタ手動検索</h3>
         <button type="button" onclick="closeSearchModal()" class="text-slate-400 hover:text-slate-700 text-2xl font-bold">&times;</button>
       </div>
-      <input type="text" id="searchInput" placeholder="JAN / 商品名 / カラー / コードで検索..."
-        class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-900 focus:outline-none"
-        oninput="filterMasterList(this.value)">
-      <div id="searchResultsList" class="overflow-y-auto flex-1 divide-y divide-slate-100 pr-1 space-y-1"></div>
+      <input type="text" id="searchInput" placeholder="JAN / 商品名 / カラー / コードで検索..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-sm mb-3 focus:ring-2 focus:ring-slate-900 focus:outline-none" oninput="filterMasterList(this.value)">
+      <div id="searchResultsList" class="overflow-y-auto flex-1 pr-1"></div>
     </div>
   </div>
 
-  <!-- 0. 未設定時の自動ダイアログ: 最初にGASのURLを設定してください -->
+  <!-- 未設定時の自動ダイアログ -->
   <div id="initialGasPromptModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 hidden">
     <div class="bg-white rounded-3xl max-w-sm w-full p-5 shadow-2xl border border-slate-200 text-left space-y-4">
       <div class="flex items-start space-x-3">
-        <div class="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0 text-amber-700 font-bold text-lg">
-          ⚠️
-        </div>
+        <div class="w-10 h-10 rounded-2xl bg-amber-100 border border-amber-300 flex items-center justify-center shrink-0 text-amber-700 font-bold text-lg">⚠️</div>
         <div>
           <span class="text-[10px] font-bold text-amber-700 uppercase">INITIAL SETUP REQUIRED</span>
           <h2 class="text-base font-black text-slate-900 leading-snug">最初にGASのURLを設定してください</h2>
         </div>
       </div>
-
       <p class="text-xs text-slate-600 leading-relaxed">
-        スプレッドシートへの記録、排他制御による通し番号の自動発番、商品マスタの読込を行うため、Google Apps Script (GAS) のWebアプリURLを入力してください。
+        スプレッドシートへの記録、商品マスタ読込、集計データ取得を行うため、GAS WebアプリURLを入力してください。
       </p>
-
       <div class="space-y-3">
         <div>
           <label class="block text-xs font-bold text-slate-700 mb-1">GAS WebアプリURL</label>
           <input type="url" id="promptGasUrlInput" placeholder="https://script.google.com/macros/s/.../exec" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 focus:bg-white focus:ring-2 focus:ring-slate-900 focus:outline-none">
-          <p class="text-[10px] text-slate-400 mt-1">※入力内容は自動保存されます。</p>
         </div>
-
-        <button type="button" onclick="saveGasUrlFromPrompt()" class="w-full h-12 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black rounded-xl text-sm shadow-md transition flex items-center justify-center space-x-1.5">
-          <span>URLを保存して開始</span>
+        <button type="button" onclick="saveGasUrlFromPrompt()" class="w-full h-12 bg-rose-600 hover:bg-rose-700 active:scale-95 text-white font-black rounded-xl text-sm shadow-md transition">
+          URLを保存して開始
         </button>
-
         <button type="button" onclick="dismissGasPrompt()" class="w-full py-2 text-slate-400 hover:text-slate-600 font-bold text-[11px] text-center">
-          後で設定する（画面下の設定欄から入力可能）
+          後で設定する
         </button>
       </div>
     </div>
@@ -397,7 +468,7 @@
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
-        osc.frequency.setValueAtTime(2093, ctx.currentTime); // High C7
+        osc.frequency.setValueAtTime(2093, ctx.currentTime);
         gain.gain.setValueAtTime(0.25, ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.07);
         osc.connect(gain);
@@ -439,8 +510,9 @@
   <!-- Application Logic -->
   <script>
     const DEFAULT_REASONS = [
-      'コード破断', '擦り傷', '編み緩み', '編みきつい',
-      '編み飛ばし', '汚れ', '黄ばみ', '異臭', '異物'
+      'コード破断', '擦り傷', '編み緩み',
+      '編みきつい', '編み飛ばし', '汚れ',
+      '黄ばみ', '異臭', '異物'
     ];
 
     const DEFAULT_MASTER = [
@@ -461,6 +533,11 @@
     let isScanLocked = false;
     let lastScannedTime = 0;
 
+    let currentSummaryPeriod = 'today';
+    let warehouseChartInstance = null;
+    let sizeChartInstance = null;
+    let reasonChartInstance = null;
+
     window.addEventListener('DOMContentLoaded', () => {
       initConfig();
       renderReasonsGrid();
@@ -471,7 +548,7 @@
       checkInitialGasPrompt();
     });
 
-    // 0. GAS 設定の初期化 & 自動ダイアログ
+    // GAS設定管理
     function initGasSettings() {
       const url = localStorage.getItem('bhin_gas_endpoint') || '';
       const sheetUrl = localStorage.getItem('bhin_spreadsheet_url') || '';
@@ -579,16 +656,14 @@
     function syncMasterFromGas() {
       const url = localStorage.getItem('bhin_gas_endpoint') || '';
       const btn = document.getElementById('btnSyncMaster');
-      
       if (!url && !(typeof google !== 'undefined' && google.script && google.script.run)) {
         alert('GAS WebアプリURLを設定してください。');
         openGasAccordion();
         return;
       }
-
       if (btn) btn.disabled = true;
 
-      const onMasterLoaded = (master) => {
+      const applyMaster = (master) => {
         if (btn) btn.disabled = false;
         if (Array.isArray(master) && master.length > 0) {
           productMaster = master.map(normalizeMasterItem);
@@ -602,7 +677,7 @@
 
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
-          .withSuccessHandler(onMasterLoaded)
+          .withSuccessHandler(applyMaster)
           .withFailureHandler(function(err) {
             if (btn) btn.disabled = false;
             showSyncNotice(false, '同期失敗: ' + err);
@@ -617,15 +692,14 @@
           .then(data => {
             if (btn) btn.disabled = false;
             if (data.success && Array.isArray(data.master)) {
-              onMasterLoaded(data.master);
+              applyMaster(data.master);
             } else {
               showSyncNotice(false, '同期エラー: ' + (data.error || '不明'));
             }
           })
           .catch(err => {
             if (btn) btn.disabled = false;
-            showSyncNotice(false, '通信エラー: ' + err.message + '（GASアクセス権を「全員」に設定してください）');
-            alert('【同期エラー: ' + err.message + '】\n\nスマホで「Failed to fetch」が表示される場合の解決手順:\n① GASエディタ画面の右上「デプロイ」→「デプロイを管理」を開きます。\n② 鉛筆アイコン（編集）をクリックします。\n③「アクセスできるユーザー」を「自分のみ」から「全員 (Anyone)」に変更します。\n④「バージョン: 新バージョン」を選択して「デプロイ」を押してください。\n\n※WebアプリURLの末尾が「/exec」になっていることもご確認ください。');
+            showSyncNotice(false, '通信エラー: ' + err.message);
           });
       }
     }
@@ -633,15 +707,15 @@
     function showSyncNotice(success, msg) {
       const notice = document.getElementById('gasSyncResultNotice');
       if (!notice) return;
-      notice.className = success 
-        ? 'p-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200' 
+      notice.className = success
+        ? 'p-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200'
         : 'p-2 rounded-xl text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200';
       notice.textContent = msg;
       notice.classList.remove('hidden');
       setTimeout(() => notice.classList.add('hidden'), 5000);
     }
 
-    // 1. 設定の初期化 & 表示
+    // 作業者・移動元設定
     function initConfig() {
       const name = localStorage.getItem('bhin_worker_name') || '';
       const sourceWh = localStorage.getItem('bhin_source_warehouse') || '1001';
@@ -654,9 +728,11 @@
       document.getElementById('configSourceWhInput').value = localStorage.getItem('bhin_source_warehouse') || '1001';
       document.getElementById('configModal').classList.remove('hidden');
     }
+
     function closeConfigModal() {
       document.getElementById('configModal').classList.add('hidden');
     }
+
     function saveConfigModal() {
       const worker = document.getElementById('configWorkerInput').value.trim();
       const wh = document.getElementById('configSourceWhInput').value.trim() || '1001';
@@ -666,7 +742,7 @@
       closeConfigModal();
     }
 
-    // 2. 移動先倉庫 選択（大きな2連ボタン）
+    // 移動先倉庫選択（1008: B品倉庫 / 1006: 直し倉庫）
     function selectDestWarehouse(wh) {
       selectedDestWh = wh;
       const b1008 = document.getElementById('btnWh1008');
@@ -680,7 +756,7 @@
       }
     }
 
-    // 3. 発生理由ボタングリッド
+    // 発生理由グリッド
     function getStoredReasons() {
       const custom = localStorage.getItem('bhin_custom_reasons');
       if (!custom) return [...DEFAULT_REASONS];
@@ -696,7 +772,6 @@
       const container = document.getElementById('reasonsGrid');
       container.innerHTML = '';
       const list = getStoredReasons();
-
       list.forEach(r => {
         const isSelected = selectedReason === r;
         const btn = document.createElement('button');
@@ -715,7 +790,6 @@
         container.appendChild(btn);
       });
 
-      // ＋ 理由追加ボタン
       const addBtn = document.createElement('button');
       addBtn.type = 'button';
       addBtn.className = 'h-12 rounded-xl text-xs font-bold border-2 border-dashed border-indigo-300 bg-indigo-50/70 hover:bg-indigo-100 text-indigo-700 transition flex items-center justify-center space-x-1 active:scale-95 select-none';
@@ -739,7 +813,7 @@
       container.appendChild(addBtn);
     }
 
-    // 4. マスタデータ取得
+    // マスタ読込
     function loadProductMaster() {
       const cached = localStorage.getItem('bhin_product_master');
       if (cached) {
@@ -760,7 +834,7 @@
       }
     }
 
-    // 5. 数量ステッパー
+    // 数量操作
     function adjustQty(delta) {
       const input = document.getElementById('quantity');
       let val = parseInt(input.value, 10) || 1;
@@ -776,7 +850,7 @@
       updateSubmitBtn();
     }
 
-    // 6. バーコードスキャナ (html5-qrcode: 爆速・高感度JAN専用)
+    // カメラ制御（直列化・二重起動防止）
     async function startScanner() {
       if (isScannerBusy) return;
       isScannerBusy = true;
@@ -797,13 +871,7 @@
             verbose: false
           });
         }
-
-        const config = {
-          fps: 25,
-          qrbox: { width: 280, height: 120 },
-          aspectRatio: 1.777778
-        };
-
+        const config = { fps: 25, qrbox: { width: 280, height: 120 }, aspectRatio: 1.777778 };
         await html5QrScanner.start(
           { facingMode: "environment" },
           config,
@@ -812,14 +880,9 @@
             if (isScanLocked || now - lastScannedTime < 1500) return;
             isScanLocked = true;
             lastScannedTime = now;
-
             playBeep();
-            if (navigator.vibrate) {
-              try { navigator.vibrate(100); } catch (e) {}
-            }
             stopScanner();
             handleBarcodeScanned(String(decodedText || '').trim());
-
             setTimeout(() => { isScanLocked = false; }, 1500);
           },
           () => {}
@@ -859,13 +922,11 @@
       selectedProduct = normalizeMasterItem(product);
       document.getElementById('noProductSection').classList.add('hidden');
       document.getElementById('productDetails').classList.remove('hidden');
-
       document.getElementById('dispProductCode').textContent = selectedProduct.productCode;
       document.getElementById('dispSize').textContent = 'SIZE: ' + selectedProduct.size;
       document.getElementById('dispName1').textContent = selectedProduct.name1;
       document.getElementById('dispName2').textContent = selectedProduct.name2 || '';
       document.getElementById('dispJan').textContent = selectedProduct.janCode;
-
       closeSearchModal();
       updateSubmitBtn();
     }
@@ -881,7 +942,6 @@
       const btn = document.getElementById('submitBtn');
       const text = document.getElementById('submitBtnText');
       const qty = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
-
       if (!selectedProduct) {
         btn.disabled = true;
         btn.className = 'w-full h-14 rounded-2xl font-black text-base shadow-lg transition flex items-center justify-center space-x-2 select-none bg-slate-200 text-slate-400 cursor-not-allowed';
@@ -889,69 +949,62 @@
       } else {
         btn.disabled = false;
         btn.className = 'w-full h-14 rounded-2xl font-black text-base shadow-lg transition flex items-center justify-center space-x-2 select-none active:scale-[0.99] bg-rose-600 hover:bg-rose-700 text-white shadow-rose-600/30';
-        text.textContent = qty > 1
-          ? qty + '点 確認して登録する'
-          : '確認して登録する';
+        text.textContent = qty > 1 ? qty + '点 確認して登録する' : '確認して登録する';
       }
     }
 
-    // 7. 手動検索モーダル（商品コード・商品名・商品名2・サイズ視認性強化版）
+    // 手動検索
     function openSearchModal() {
       document.getElementById('searchInput').value = '';
       filterMasterList('');
       document.getElementById('searchModal').classList.remove('hidden');
     }
+
     function closeSearchModal() {
       document.getElementById('searchModal').classList.add('hidden');
     }
+
     function filterMasterList(query) {
       const q = String(query || '').toLowerCase().trim();
       const list = document.getElementById('searchResultsList');
       list.innerHTML = '';
-
       const filtered = productMaster.filter(p =>
         p.productCode.toLowerCase().includes(q) ||
         p.name1.toLowerCase().includes(q) ||
         (p.name2 && p.name2.toLowerCase().includes(q)) ||
         p.janCode.includes(q)
       );
-
       if (filtered.length === 0) {
         list.innerHTML = '<div class="py-6 text-center text-xs text-slate-400">該当する商品がありません</div>';
         return;
       }
-
       filtered.forEach(p => {
         const row = document.createElement('div');
         row.className = 'p-3.5 mb-2 hover:bg-slate-100/80 active:bg-slate-100 cursor-pointer rounded-2xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between space-x-3 transition shadow-xs';
         row.onclick = () => selectProduct(p);
-
-        row.innerHTML = 
+        row.innerHTML =
           '<div class="space-y-1.5 min-w-0 flex-1">' +
             '<div class="flex items-center space-x-2 flex-wrap gap-y-1">' +
-              '<span class="font-mono-num text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded-md tracking-wide">' + escapeHtml(p.productCode) + '</span>' +
+              '<span class="font-mono-num text-xs font-black bg-slate-900 text-white px-2 py-0.5 rounded-md">' + escapeHtml(p.productCode) + '</span>' +
               '<span class="font-black text-xs bg-indigo-100 text-indigo-900 px-2 py-0.5 rounded-md border border-indigo-200">サイズ: ' + escapeHtml(p.size) + '</span>' +
             '</div>' +
             '<div class="font-black text-sm text-slate-900 leading-snug">' + escapeHtml(p.name1) + '</div>' +
             (p.name2 ? '<div class="text-xs font-extrabold text-rose-700 bg-rose-50 border border-rose-200/70 px-2 py-0.5 rounded-md inline-block">' + escapeHtml(p.name2) + '</div>' : '') +
           '</div>' +
-          '<button type="button" class="px-3.5 py-2 text-xs bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black shrink-0 active:scale-95 transition shadow-sm">選択</button>';
-
+          '<button type="button" class="px-3.5 py-2 text-xs bg-slate-900 text-white rounded-xl font-black shrink-0">選択</button>';
         list.appendChild(row);
       });
     }
 
-    // ★機能追加①：送信前確認モーダルの開閉
+    // 機能①：送信前確認モーダル
     function openConfirmSubmitModal() {
       if (isSubmitting || !selectedProduct) return;
-
       const worker = localStorage.getItem('bhin_worker_name') || '';
       if (!worker) {
         alert('作業者名を設定してください');
         openConfigModal();
         return;
       }
-
       clampQuantityInput();
       const sourceWh = localStorage.getItem('bhin_source_warehouse') || '1001';
       const quantity = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
@@ -977,20 +1030,17 @@
       submitReport();
     }
 
-    // 8. 送信処理（スプレッドシートへ直接追記・通し番号なし）
+    // 送信処理
     function submitReport() {
       if (isSubmitting || !selectedProduct) return;
-
       const worker = localStorage.getItem('bhin_worker_name') || '';
       if (!worker) {
         alert('作業者名を設定してください');
         openConfigModal();
         return;
       }
-
       const sourceWh = localStorage.getItem('bhin_source_warehouse') || '1001';
       const quantity = Math.max(1, parseInt(document.getElementById('quantity').value, 10) || 1);
-
       const payload = {
         workerName: worker,
         sourceWarehouse: sourceWh,
@@ -1006,7 +1056,6 @@
       };
 
       setSubmitLoading(true);
-
       if (typeof google !== 'undefined' && google.script && google.script.run) {
         google.script.run
           .withSuccessHandler(function(res) {
@@ -1030,22 +1079,22 @@
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ action: 'sendInventoryData', payload: payload })
           })
-          .then(res => res.json())
-          .then(res => {
-            setSubmitLoading(false);
-            if (res && res.success) {
-              onReportSuccess(payload, res.timestamp);
-            } else {
-              alert('スプレッドシート保存エラー:\n' + (res.error || '不明なエラー'));
-            }
-          })
-          .catch(err => {
-            setSubmitLoading(false);
-            alert('GAS通信エラー: ' + err.message + '\n\n【Failed to fetch が表示される場合】\n1. GASデプロイ設定の「アクセスできるユーザー」が「全員 (Anyone)」になっているか確認してください（「自分のみ」になっているとスマホからアクセスできません）。\n2. GAS WebアプリURLが正しい（末尾が /exec）か確認してください。');
-          });
+            .then(res => res.json())
+            .then(res => {
+              setSubmitLoading(false);
+              if (res && res.success) {
+                onReportSuccess(payload, res.timestamp);
+              } else {
+                alert('スプレッドシート保存エラー:\n' + (res.error || '不明なエラー'));
+              }
+            })
+            .catch(err => {
+              setSubmitLoading(false);
+              alert('GAS通信エラー: ' + err.message);
+            });
         } else {
           setSubmitLoading(false);
-          alert('【未設定エラー】\nGAS WebアプリURLが設定されていません。\n画面最下部の「⚙️ 設定（GAS URL入力 ＆ 商品マスタ読込）」にURLを入力してください。');
+          alert('GAS WebアプリURLが設定されていません。');
           openGasAccordion();
         }
       }
@@ -1064,7 +1113,7 @@
       }
     }
 
-    // ★機能追加②：当日限定送信履歴（日付変更時に前日以前を自動削除）
+    // 機能②：当日限定送信履歴（日付変更時に前日以前を自動削除）
     function getTodayDateKey() {
       const now = new Date();
       const y = now.getFullYear();
@@ -1184,7 +1233,217 @@
       document.getElementById('historyModal').classList.add('hidden');
     }
 
-    // 9. 送信完了モーダル（シンプル表示 ＋ 当日履歴へ記録）
+    // 機能③：WEBアプリ内「集計データ」グラフモーダル（1006 直し倉庫 / 1008 B品倉庫・サイズ別・発生理由別）
+    function openAnalyticsModal() {
+      document.getElementById('analyticsModal').classList.remove('hidden');
+      updatePeriodTabUI(currentSummaryPeriod);
+      fetchAndRenderSummary();
+    }
+
+    function closeAnalyticsModal() {
+      document.getElementById('analyticsModal').classList.add('hidden');
+    }
+
+    function changeSummaryPeriod(period) {
+      currentSummaryPeriod = period;
+      updatePeriodTabUI(period);
+      fetchAndRenderSummary();
+    }
+
+    function updatePeriodTabUI(period) {
+      const map = {
+        today: document.getElementById('periodBtnToday'),
+        month: document.getElementById('periodBtnMonth'),
+        all: document.getElementById('periodBtnAll')
+      };
+      Object.keys(map).forEach(k => {
+        if (!map[k]) return;
+        map[k].className = (k === period)
+          ? 'py-1.5 rounded-xl bg-slate-900 text-white transition'
+          : 'py-1.5 rounded-xl text-slate-600 hover:bg-white/60 transition';
+      });
+    }
+
+    function fetchAndRenderSummary() {
+      const loadingEl = document.getElementById('analyticsLoading');
+      const contentEl = document.getElementById('analyticsContent');
+      loadingEl.textContent = '集計データを取得中...';
+      loadingEl.classList.remove('hidden');
+      contentEl.classList.add('hidden');
+
+      const applySummary = (summary) => {
+        loadingEl.classList.add('hidden');
+        contentEl.classList.remove('hidden');
+        renderSummaryCharts(summary);
+      };
+
+      const sheetUrl = localStorage.getItem('bhin_spreadsheet_url') || '';
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(res => {
+            if (res && res.success && res.summary) {
+              applySummary(res.summary);
+            } else {
+              loadingEl.textContent = '集計エラー: ' + ((res && res.error) || '不明');
+            }
+          })
+          .withFailureHandler(err => {
+            loadingEl.textContent = 'GAS通信エラー: ' + err;
+          })
+          .getSummaryDataFromClient(currentSummaryPeriod, sheetUrl);
+        return;
+      }
+
+      const gasUrl = localStorage.getItem('bhin_gas_endpoint') || '';
+      if (!gasUrl) {
+        loadingEl.textContent = 'GAS WebアプリURLを設定してください。';
+        return;
+      }
+
+      const sheetParam = sheetUrl ? '&spreadsheetUrl=' + encodeURIComponent(sheetUrl) : '';
+      const endpoint = gasUrl + (gasUrl.includes('?') ? '&' : '?') +
+        'action=getSummary&period=' + encodeURIComponent(currentSummaryPeriod) +
+        sheetParam + '&t=' + Date.now();
+
+      fetch(endpoint)
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.success && data.summary) {
+            applySummary(data.summary);
+          } else {
+            loadingEl.textContent = '集計エラー: ' + ((data && data.error) || 'GAS側code.gsの更新を確認してください');
+          }
+        })
+        .catch(err => {
+          loadingEl.textContent = '通信エラー: ' + err.message;
+        });
+    }
+
+    function renderSummaryCharts(summary) {
+      const wh1006 = (summary.warehouses && summary.warehouses['1006']) || { quantity: 0, records: 0 };
+      const wh1008 = (summary.warehouses && summary.warehouses['1008']) || { quantity: 0, records: 0 };
+
+      document.getElementById('sumWh1006Qty').textContent = wh1006.quantity;
+      document.getElementById('sumWh1006Rec').textContent = wh1006.records;
+      document.getElementById('sumWh1008Qty').textContent = wh1008.quantity;
+      document.getElementById('sumWh1008Rec').textContent = wh1008.records;
+      document.getElementById('sumTotalQtyLabel').textContent = summary.totalQuantity || 0;
+      document.getElementById('analyticsUpdatedAt').textContent = '更新: ' + (summary.generatedAt || '-');
+
+      // 0. 倉庫別 合計数量 比較グラフ（1006 直し倉庫 vs 1008 B品倉庫）
+      if (warehouseChartInstance) warehouseChartInstance.destroy();
+      const whCtx = document.getElementById('warehouseChartCanvas').getContext('2d');
+      warehouseChartInstance = new Chart(whCtx, {
+        type: 'bar',
+        data: {
+          labels: ['直し倉庫 (1006)', 'B品倉庫 (1008)'],
+          datasets: [{
+            label: '合計数量（点）',
+            data: [wh1006.quantity || 0, wh1008.quantity || 0],
+            backgroundColor: [
+              'rgba(37, 99, 235, 0.85)',
+              'rgba(245, 158, 11, 0.88)'
+            ],
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            x: { ticks: { font: { size: 11, weight: 'bold' } } },
+            y: { beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } }
+          }
+        }
+      });
+
+      // 1. サイズ別 数量グラフ（1006 / 1008内訳）
+      const sizes = Array.isArray(summary.sizes) ? summary.sizes : [];
+      const sizeLabels = sizes.map(s => s.size);
+      const size1006Data = sizes.map(s => s.wh1006);
+      const size1008Data = sizes.map(s => s.wh1008);
+
+      if (sizeChartInstance) sizeChartInstance.destroy();
+      const sizeCtx = document.getElementById('sizeChartCanvas').getContext('2d');
+      sizeChartInstance = new Chart(sizeCtx, {
+        type: 'bar',
+        data: {
+          labels: sizeLabels.length ? sizeLabels : ['データなし'],
+          datasets: [
+            {
+              label: 'B品倉庫 (1008)',
+              data: sizeLabels.length ? size1008Data : [0],
+              backgroundColor: 'rgba(245, 158, 11, 0.88)',
+              borderRadius: 4
+            },
+            {
+              label: '直し倉庫 (1006)',
+              data: sizeLabels.length ? size1006Data : [0],
+              backgroundColor: 'rgba(37, 99, 235, 0.85)',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+          },
+          scales: {
+            x: { stacked: true, ticks: { font: { size: 10 } } },
+            y: { stacked: true, beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } }
+          }
+        }
+      });
+
+      // 2. 発生理由別 数量グラフ（横棒・1006 / 1008内訳）
+      const reasons = Array.isArray(summary.reasons) ? summary.reasons.slice(0, 10) : [];
+      const reasonLabels = reasons.map(r => r.reason);
+      const reason1006Data = reasons.map(r => r.wh1006);
+      const reason1008Data = reasons.map(r => r.wh1008);
+
+      if (reasonChartInstance) reasonChartInstance.destroy();
+      const reasonCtx = document.getElementById('reasonChartCanvas').getContext('2d');
+      reasonChartInstance = new Chart(reasonCtx, {
+        type: 'bar',
+        data: {
+          labels: reasonLabels.length ? reasonLabels : ['データなし'],
+          datasets: [
+            {
+              label: 'B品倉庫 (1008)',
+              data: reasonLabels.length ? reason1008Data : [0],
+              backgroundColor: 'rgba(225, 29, 72, 0.84)',
+              borderRadius: 4
+            },
+            {
+              label: '直し倉庫 (1006)',
+              data: reasonLabels.length ? reason1006Data : [0],
+              backgroundColor: 'rgba(15, 23, 42, 0.78)',
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'top', labels: { boxWidth: 10, font: { size: 10 } } }
+          },
+          scales: {
+            x: { stacked: true, beginAtZero: true, ticks: { precision: 0, font: { size: 10 } } },
+            y: { stacked: true, ticks: { font: { size: 10 } } }
+          }
+        }
+      });
+    }
+
+    // 送信完了
     function onReportSuccess(payload, timestamp) {
       saveToTodayHistory(payload, timestamp);
       playSuccessChime();
@@ -1194,11 +1453,9 @@
       document.getElementById('modalDest').textContent = payload.destWarehouse === '1008' ? 'B品倉庫 (1008)' : '直し倉庫 (1006)';
       document.getElementById('modalReason').textContent = payload.reason;
       document.getElementById('modalTimestamp').textContent = timestamp || '';
-
       document.getElementById('tagModal').classList.remove('hidden');
     }
 
-    // ★「次のスキャンへ」大ボタンで即カメラ復帰
     function closeTagModalAndNext() {
       document.getElementById('tagModal').classList.add('hidden');
       clearSelectedProduct();
